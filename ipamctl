@@ -1,0 +1,508 @@
+#!/usr/local/bin/python3
+#
+# Copyright 2022 Michael Graves <mgraves@brainfat.net>
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 
+#     1. Redistributions of source code must retain the above copyright notice,
+#        this list of conditions and the following disclaimer.
+# 
+#     2. Redistributions in binary form must reproduce the above copyright
+#        notice, this list of conditions and the following disclaimer in the
+#        documentation and/or other materials provided with the distribution.
+# 
+#     3. Neither the name of the copyright holder nor the names of its
+#        contributors may be used to endorse or promote products derived from
+#        this software without specific prior written permission.
+# 
+#     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+#     "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+#     TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+#     A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+#     HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+#     SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+#     LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+#     USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+#     ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+#     OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+#     OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+#     SUCH DAMAGE.
+#
+
+from functools import cmp_to_key
+from libipam import ipam
+import ipaddress
+import sys
+import argparse
+import os
+import configparser
+
+ipamcon = None
+force = False
+include_subs = False
+
+RR_OPTS = ipam.RR_OPTS
+RR_FMT = {
+    'SOA': "{fqdn} serial:{serial} {options}",
+    'A': "{fqdn} {rr_type} {value} id:{id} {options}",
+    'AAAA': "{fqdn} {rr_type} {value} id:{id} {options}",
+    'CAA': "{fqdn} {rr_type} {value} id:{id} {options}",
+    'CERT': "{fqdn} {rr_type} {value} id:{id} {options}",
+    'CNAME': "{fqdn} {rr_type} {value} id:{id} {options}",
+    'DNAME': "{fqdn} {rr_type} {value} id:{id} {options}",
+    'DS': "{fqdn} {rr_type} {value} id:{id} {options}",
+    'MX': "{fqdn} {rr_type} {value} id:{id} {options}",
+    'NAPTR': "{fqdn} {rr_type} {value} id:{id} {options}",
+    'NS': "{fqdn} {rr_type} {value} id:{id} {options}",
+    'PTR': "{fqdn} {rr_type} {value} id:{id} {options}",
+    'TXT': "{fqdn} {rr_type} \"{value}\" id:{id} {options}",
+}
+
+def unpack_options(options):
+    # take the option DB format and create dict
+    vals={}
+    opts = ""
+    if isinstance(options, dict):
+        return(options)
+    elif isinstance(options, list):
+        opts = " ".join(options)
+    elif isinstance(options, str):
+        opts = options
+    else:
+        return(vals)
+    if len(opts) == 0:
+        return(vals)
+    for o in opts.split(" "):
+        (k,v) = o.split(":")
+        vals[k]=v
+    return(vals)
+
+def pack_options(options):
+    # take a dict and make the option DB format
+    s=[]
+    if not isinstance(options, dict):
+        return("")
+    for k in options.keys():
+        s.append("{}:{}".format(k,options[k]))
+    return(" ".join(s))
+
+def options_str(opts):
+    l=[]
+    if 'req' in opts:
+        l.extend(map(lambda a : a+":##*",opts['req']))
+    if 'opt' in opts:
+        l.extend(map(lambda a : a+":##",opts['opt']))
+    return(" ".join(l))
+
+def print_domains(doms):
+    if type(doms) == list:
+        for i, d in enumerate(doms):
+            options = pack_options(d['options'])
+            d['options'] = options
+            print("domain "+RR_FMT['SOA'].format(**d))
+    else:
+        options = pack_options(doms['options'])
+        doms['options'] = options
+        print("domain "+RR_FMT['SOA'].format(**doms))
+
+def print_records(recs):
+    if type(recs) == list:
+        for i, r in enumerate(recs):
+            # should be: id name domain_id type value [opts] record_id
+            options = pack_options(r['options'])
+            r['options'] = options
+            print("record "+RR_FMT[r['rr_type']].format(**r))
+    else:
+        options = pack_options(recs['options'])
+        recs['options'] = options
+        print("record "+RR_FMT[r['rr_type']].format(**recs))
+
+def do_domain(cmd, opts):
+    if cmd == 'add':
+        if len(opts) == 0:
+            print("error: missing domain name")
+            return False
+        name = opts.pop(0)
+        options = unpack_options(opts)
+        if not ipamcon.check_options('SOA', options):
+                print("error: missing required options")
+                print("add domain <name> {}".format(options_str(RR_OPTS['SOA'])))
+                return False
+        try:
+            rc = ipamcon.add_domain(name, options=options)
+        except Exception as e:
+            print("error adding domain to DB: {}".format(e))
+            return False
+        print("succeded adding domain")
+        return(True)
+    elif cmd == 'del':
+        if len(opts) == 0:
+            print("error: missing domain name")
+            print("del domain <name>")
+            return False
+        name = opts.pop(0)
+        try:
+            rc = ipamcon.delete_domain(name, force=force)
+        except Exception as e:
+            print("error deleting domain: {}".format(e))
+            return False
+        print("succeded deleting domain")
+        return(True)
+    elif cmd == 'upd':
+        if len(opts) == 0:
+            print("error: missing domain name")
+            return False
+        name = opts.pop(0)
+        options = unpack_options(opts)
+        if not ipamcon.check_options('SOA', options):
+            print("error: not enough arguments")
+            print("upd domain <name> {}".format(options_str(RR_OPTS['SOA'])))
+            return False
+        try:
+            rc = ipamcon.update_domain(name, options=options)
+        except Exception as e:
+            print("error updating domain: {}".format(e))
+            return False
+        print("succeded updating domain")
+        return(True)
+    elif cmd == 'show':
+        name = opts.pop(0) if len(opts) > 0 else None
+        try:
+            rc = ipamcon.find_domain(name, include_subs=include_subs)
+        except Exception as e:
+            print("error searching domain {}".format(e))
+            return False
+        print_domains(rc)
+        return(True)
+    elif cmd == 'export':
+        if len(opts) < 2:
+            print("error: missing domain name")
+            return False
+        domain = opts.pop(0)
+        exp_type = opts.pop(0)
+        out = ""
+        try:
+            out = ipamcon.export(type=exp_type,domain=domain)
+        except Exception as e:
+            print(f'error: export error {e}')
+            return(False)
+        print(out)
+        return(True)
+    else:
+        print("unknown command {}".format(cmd))
+        rc = False
+    return(rc)
+
+def do_record(cmd, opts):
+    if cmd == 'add':
+        if len(opts) < 3:
+            print("error: missing name, type or value")
+            return False
+        name = opts.pop(0)
+        rr_type = opts.pop(0).upper()
+        value = opts.pop(0)
+        options = unpack_options(opts)
+        try:
+            if not ipamcon.check_options(rr_type, options):
+                print("error: not enough arguments")
+                print("add record <name> {}".format(options_str(RR_OPTS[rr_type])))
+                return False
+        except Exception as e:
+            print(f'error: unknown record type {e}')
+            return False
+        try:
+            rc = ipamcon.add_record(name, rr_type, value, options=options)
+        except Exception as e:
+            print("error adding record to DB: {}".format(e))
+            return False
+        print("succeded adding record")
+        return(True)
+    elif cmd == 'del':
+        if len(opts) < 2:
+            print("error: not enough arguments")
+            print("del record <name> id:##")
+            return False
+        name = opts.pop(0)
+        options = unpack_options(opts)
+        rid=None
+        if 'id' not in options:
+            print("error: must specifiy an ID")
+            return False
+        else:
+            rid = options['id']
+            del options['id']
+        try:
+            rc = ipamcon.delete_record(name, id=rid, force=force)
+        except Exception as e:
+            print("error deleting record: {}".format(e))
+            return False
+        print("succeded deleting record")
+        return(True)
+    elif cmd == 'upd':
+        if len(opts) < 2:
+            print("error: missing name, type, value, id")
+            print("upd record <name> <value> {}".format(options_str(RR_OPTS[rr_type])))
+            return False
+        name = opts.pop(0)
+        rr_type = opts.pop(0).upper()
+        value = opts.pop(0)
+        options = unpack_options(opts)
+        rid=None
+        if 'id' not in options:
+            print("error: must specifiy an ID")
+            return False
+        else:
+            rid = options['id']
+            del options['id']
+        try:
+            if not ipamcon.check_options(rr_type, options):
+                print("error: not enough arguments")
+                print("upd record <name> <type> <value> id:## {}".format(options_str(RR_OPTS[rr_type])))
+                return False
+        except Exception as e:
+            print(f'error: unknown record type {e}')
+            return False
+        try:
+            rc = ipamcon.update_record(name, rr_type, value, id=rid, options=options)
+        except Exception as e:
+            print("error updating record: {}".format(e))
+            return False
+        print("succeded updating record")
+        return(True)
+    elif cmd == 'show':
+        name = opts.pop(0) if len(opts) > 0 else None
+        try:
+            rc = ipamcon.find_record(name, include_subs=include_subs)
+        except Exception as e:
+            print("error searching record: {}".format(e))
+            return False
+        print_records(rc)
+        return(True)
+    else:
+        print("unknown command {}".format(cmd))
+        rc = False
+    return(rc)
+
+def do_address(cmd, opts):
+    if cmd == 'show':
+        if len(opts) < 1:
+            print("error: not enough arguments")
+            print("show address <10.0.0.1>")
+            return False
+        addr = opts.pop(0)
+        try:
+            rc = ipamcon.find_address(addr)
+        except Exception as e:
+            print("error searching record: {}".format(e))
+            return False
+        print_records(rc)
+        return True
+    else:
+        print("unknown command {}".format(cmd))
+    return True
+
+def do_network(cmd, opts):
+    if cmd == 'show':
+        if len(opts) < 1:
+            print("error: not enough arguments")
+            print("show network <10.0.0.0/24>")
+            return False
+        net = opts.pop(0)
+        try:
+            rc = ipamcon.find_network(net)
+        except Exception as e:
+            print("error searching record: {}".format(e))
+            return False
+        print_records(rc)
+        return True
+    else:
+        print("unknown command {}".format(cmd))
+    return True
+
+def _backup_cmp(a, b):
+    if a['rr_type'] in ['A', 'AAAA']:
+        return(-1)
+    elif b['rr_type'] in ['A', 'AAAA']:
+        return(1)
+    else:
+        return(0)
+
+def do_maintenance(cmd, opts):
+    if cmd == 'backup':
+        stdout_fh = None
+        if len(opts) != 0:
+            stdout_fh = sys.stdout
+            sys.stdout = open(opts[0], 'w')
+        try:
+            rc = ipamcon.find_domain('*')
+        except Exception as e:
+            if stdout_fh != None:
+                sys.stdout.close()
+                sys.stdout = stdout_fh
+            print("error backing up database: {}".format(e))
+            return False
+        print_domains(rc)
+        try:
+            rc = ipamcon.find_record('*',include_subs=True)
+        except Exception as e:
+            if stdout_fh != None:
+                sys.stdout.close()
+                sys.stdout = stdout_fh
+            print("error backing up database: {}".format(e))
+            return False
+        #NOTE: need to sort the records so that A and AAAA records are first
+        rc.sort(key=cmp_to_key(_backup_cmp))
+        print_records(rc)
+        if stdout_fh != None:
+            sys.stdout.close()
+            sys.stdout = stdout_fh
+    elif cmd == 'restore':
+        commands=[]
+        if len(opts) == 0:
+            # read from stdin
+            commands = sys.stdin.readlines()
+        else:
+            # read from file
+            try:
+                f = open(opts[0], 'r')
+            except Exception as e:
+                print("error opening file {}: {}".format(opts[0],e))
+                return False
+            commands = f.readlines()
+            f.close()
+        commands = [line.rstrip() for line in commands]
+        for cmd in commands:
+            (res, opts) = cmd.split(" ",1)
+            if res == "domain":
+                v = opts.split(" ")
+                do_domain("add", v)
+            elif res == "record":
+                v = opts.split(" ")
+                do_record("add", v)
+            else:
+                print("error unknwon resource {}".format(res))
+    else:
+        print("unknown command {}".format(cmd))
+    return True
+
+def usage():
+    print("""ipamctl [-fh] [-c config.ini] <action> <resource> [resource specific values / options]
+    -c      alternate ini file
+    -f      force action
+    -h      this help
+
+    action:
+        show    show resource values
+        add     add resource
+        del     delete resource
+        upd     update resource
+        export  create export of domain in specfic sever format
+        backup  backup the database to file
+        restore restore database from file
+
+    resource:
+        domain      <(sub)domain_name> (options)
+        record      <fqdn> <rr_type> <value> (options)
+        network     <network/mask>
+        address     <address>
+        database    (only used for backup/restore)
+        bind        Bind formatted zone file (only for export)
+        nsd         NSD formatted zone file (only for export)
+
+    """)
+
+def main():
+    global force, include_subs, ipamcon
+
+    action = None
+    resource = None
+    dbfile = None
+    config = None
+    ini_files = ['/etc/ipam.ini', os.path.expanduser('~/.ipam.ini')]
+    action_list = ["add", "del", "delete", "upd", "update", "exp", "export", "show", "backup", "restore"]
+    resource_list = ["domain", "domains", "record", "records", "network", "networks", "net", "address", "addresses", "addr", "database"]
+
+    sys.argv.pop(0)     # skip the command
+    while len(sys.argv) != 0:
+        if sys.argv[0][0] == "-":   # -argument
+            if sys.argv[0] == "-h":
+                usage()
+                sys.exit(1)
+            elif sys.argv[0] == "-f":
+                force = True
+            elif sys.argv[0] == "-s":
+                include_subs = True
+            elif sys.argv[0] == "-c":
+                sys.argv.pop(0)
+                if sys.argv != []:
+                    ini_files.append(sys.argv[0])
+                else:
+                    print("required argument missing for -c")
+                    sys.exit(1)
+            sys.argv.pop(0)
+        else:
+            break;  # ran out of flags... so bail
+
+    if sys.argv != []:
+        action = sys.argv.pop(0)
+    if sys.argv != []:
+        resource = sys.argv.pop(0)
+    options = sys.argv
+
+    config = configparser.ConfigParser()
+    val = config.read(ini_files)
+
+    if val == []:
+        print("no configuration found. aborting")
+        sys.exit(2)
+
+    dbtype = config.get('database','type')
+    if dbtype not in ['sqlite3', 'http']:
+        print("no database type specified")
+        sys.exit(1)
+
+    if action == None or action not in action_list:
+        print("unknown action {}".format(action))
+        usage()
+        sys.exit(1)
+
+    if resource not in resource_list:
+        usage()
+        print("unknown resource {}".format(resource))
+        sys.exit(1)
+
+    if dbtype == "sqlite3":
+        if config.get('database','path') == None:
+            print("no database file specified")
+            sys.exit(1)
+        ipamcon = ipam(database=dbtype, dbfile=config.get('database','path'))
+    elif dbtype == "http":
+        print("connecting via http")
+        if config.get('database', 'server') == None:
+            print("no database server specified")
+            sys.exit(1)
+        if config.get('database', 'port') == None:
+            print("no database port specified")
+            sys.exit(1)
+        if config.get('database', 'apikey') == None:
+            print("no database apikey specified")
+            sys.exit(1)
+        ipamcon = ipam(database=dbtype, server=config.get('database','server'), port=config.get('database','port'), key=config.get('database','apikey'))
+
+    if resource in ['domain', 'domains' ]:
+        do_domain(action, options)
+    elif resource in ['record', 'records' ]:
+        do_record(action, options)
+    elif resource in ['net', 'network', 'networks']:
+        do_network(action, options)
+    elif resource in ['addr', 'address', 'addresses']:
+        do_address(action, options)
+    elif resource in ['database']:
+        do_maintenance(action, options)
+
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()
+
