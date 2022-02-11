@@ -8,9 +8,10 @@ The ipam.ini instrusts the ipamctl(5) and ipamd(5)
 
 ### Server keys
 
-	listen		ip address for the ipamd(5) server to listen on
-	port		port for the ipamd(5) server to listen on
-	apikey		API Key for the ipamd(5) server to use
+	listen		ip address for the ipamd(5) server to listen on (required)
+	port		port for the ipamd(5) server to listen on (required)
+	apikey		API Key for the ipamd(5) server to use (required)
+	user		user to change to with running as daemon (optional)
 
 ### Database keys
 
@@ -43,6 +44,7 @@ The ipam.ini instrusts the ipamctl(5) and ipamd(5)
 	listen=127.0.0.1
 	port=8000
 	apikey=abc123
+	user=_ipam
 
 ## Also See
 	ipamctl(7), ipamd(7)
