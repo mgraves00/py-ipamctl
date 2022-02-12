@@ -491,15 +491,18 @@ def main():
         ipamcon = ipam(database=dbtype, server=config.get('database','server'), port=config.get('database','port'), key=config.get('database','apikey'))
 
     if resource in ['domain', 'domains' ]:
-        do_domain(action, options)
+        rc = do_domain(action, options)
     elif resource in ['record', 'records' ]:
-        do_record(action, options)
+        rc = do_record(action, options)
     elif resource in ['net', 'network', 'networks']:
-        do_network(action, options)
+        rc = do_network(action, options)
     elif resource in ['addr', 'address', 'addresses']:
-        do_address(action, options)
+        rc = do_address(action, options)
     elif resource in ['database']:
-        do_maintenance(action, options)
+        rc = do_maintenance(action, options)
+
+    if rc == False:
+        sys.exit(1)
 
     sys.exit(0)
 
