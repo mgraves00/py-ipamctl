@@ -335,7 +335,7 @@ def do_maintenance(cmd, opts):
             stdout_fh = sys.stdout
             sys.stdout = open(opts[0], 'w')
         try:
-            rc = ipamcon.find_domain('*')
+            rc = ipamcon.find_domain('')
         except Exception as e:
             if stdout_fh != None:
                 sys.stdout.close()
@@ -344,7 +344,7 @@ def do_maintenance(cmd, opts):
             return False
         print_domains(rc)
         try:
-            rc = ipamcon.find_record('*',include_subs=True)
+            rc = ipamcon.find_record('',include_subs=True)
         except Exception as e:
             if stdout_fh != None:
                 sys.stdout.close()
