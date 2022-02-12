@@ -121,25 +121,25 @@ def print_records(recs):
 def do_domain(cmd, opts):
     if cmd == 'add':
         if len(opts) == 0:
-            print("error: missing domain name")
+            eprint("error: missing domain name")
             return False
         name = opts.pop(0)
         options = unpack_options(opts)
         if not ipamcon.check_options('SOA', options):
-                print("error: missing required options")
-                print("add domain <name> {}".format(options_str(RR_OPTS['SOA'])))
+                eprint("error: missing required options")
+                eprint("add domain <name> {}".format(options_str(RR_OPTS['SOA'])))
                 return False
         try:
             rc = ipamcon.add_domain(name, options=options)
         except Exception as e:
-            print("error adding domain to DB: {}".format(e))
+            eprint("error adding domain to DB: {}".format(e))
             return False
-        print("succeded adding domain")
+        eprint("succeded adding domain")
         return(True)
     elif cmd == 'del':
         if len(opts) == 0:
-            print("error: missing domain name")
-            print("del domain <name>")
+            eprint("error: missing domain name")
+            eprint("del domain <name>")
             return False
         name = opts.pop(0)
         try:
@@ -147,24 +147,24 @@ def do_domain(cmd, opts):
         except Exception as e:
             print("error deleting domain: {}".format(e))
             return False
-        print("succeded deleting domain")
+        eprint("succeded deleting domain")
         return(True)
     elif cmd == 'upd':
         if len(opts) == 0:
-            print("error: missing domain name")
+            eprint("error: missing domain name")
             return False
         name = opts.pop(0)
         options = unpack_options(opts)
         if not ipamcon.check_options('SOA', options):
-            print("error: not enough arguments")
-            print("upd domain <name> {}".format(options_str(RR_OPTS['SOA'])))
+            eprint("error: not enough arguments")
+            eprint("upd domain <name> {}".format(options_str(RR_OPTS['SOA'])))
             return False
         try:
             rc = ipamcon.update_domain(name, options=options)
         except Exception as e:
-            print("error updating domain: {}".format(e))
+            eprint("error updating domain: {}".format(e))
             return False
-        print("succeded updating domain")
+        eprint("succeded updating domain")
         return(True)
     elif cmd == 'show':
         name = opts.pop(0) if len(opts) > 0 else None
@@ -177,7 +177,7 @@ def do_domain(cmd, opts):
         return(True)
     elif cmd == 'export':
         if len(opts) < 2:
-            print("error: missing domain name")
+            eprint("error: missing domain name")
             return False
         domain = opts.pop(0)
         exp_type = opts.pop(0)
@@ -185,19 +185,19 @@ def do_domain(cmd, opts):
         try:
             out = ipamcon.export(type=exp_type,domain=domain)
         except Exception as e:
-            print(f'error: export error {e}')
+            eprint(f'error: export error {e}')
             return(False)
         print(out)
         return(True)
     else:
-        print("unknown command {}".format(cmd))
+        eprint("unknown command {}".format(cmd))
         rc = False
     return(rc)
 
 def do_record(cmd, opts):
     if cmd == 'add':
         if len(opts) < 3:
-            print("error: missing name, type or value")
+            eprint("error: missing name, type or value")
             return False
         name = opts.pop(0)
         rr_type = opts.pop(0).upper()
@@ -209,25 +209,25 @@ def do_record(cmd, opts):
                 print("add record <name> {}".format(options_str(RR_OPTS[rr_type])))
                 return False
         except Exception as e:
-            print(f'error: unknown record type {e}')
+            eprint(f'error: unknown record type {e}')
             return False
         try:
             rc = ipamcon.add_record(name, rr_type, value, options=options)
         except Exception as e:
-            print("error adding record to DB: {}".format(e))
+            eprint("error adding record to DB: {}".format(e))
             return False
-        print("succeded adding record")
+        eprint("succeded adding record")
         return(True)
     elif cmd == 'del':
         if len(opts) < 2:
-            print("error: not enough arguments")
-            print("del record <name> id:##")
+            eprint("error: not enough arguments")
+            eprint("del record <name> id:##")
             return False
         name = opts.pop(0)
         options = unpack_options(opts)
         rid=None
         if 'id' not in options:
-            print("error: must specifiy an ID")
+            eprint("error: must specifiy an ID")
             return False
         else:
             rid = options['id']
@@ -235,14 +235,14 @@ def do_record(cmd, opts):
         try:
             rc = ipamcon.delete_record(name, id=rid, force=force)
         except Exception as e:
-            print("error deleting record: {}".format(e))
+            eprint("error deleting record: {}".format(e))
             return False
-        print("succeded deleting record")
+        eprint("succeded deleting record")
         return(True)
     elif cmd == 'upd':
         if len(opts) < 2:
-            print("error: missing name, type, value, id")
-            print("upd record <name> <value> {}".format(options_str(RR_OPTS[rr_type])))
+            eprint("error: missing name, type, value, id")
+            eprint("upd record <name> <value> {}".format(options_str(RR_OPTS[rr_type])))
             return False
         name = opts.pop(0)
         rr_type = opts.pop(0).upper()
@@ -250,74 +250,74 @@ def do_record(cmd, opts):
         options = unpack_options(opts)
         rid=None
         if 'id' not in options:
-            print("error: must specifiy an ID")
+            eprint("error: must specifiy an ID")
             return False
         else:
             rid = options['id']
             del options['id']
         try:
             if not ipamcon.check_options(rr_type, options):
-                print("error: not enough arguments")
-                print("upd record <name> <type> <value> id:## {}".format(options_str(RR_OPTS[rr_type])))
+                eprint("error: not enough arguments")
+                eprint("upd record <name> <type> <value> id:## {}".format(options_str(RR_OPTS[rr_type])))
                 return False
         except Exception as e:
-            print(f'error: unknown record type {e}')
+            eprint(f'error: unknown record type {e}')
             return False
         try:
             rc = ipamcon.update_record(name, rr_type, value, id=rid, options=options)
         except Exception as e:
-            print("error updating record: {}".format(e))
+            eprint("error updating record: {}".format(e))
             return False
-        print("succeded updating record")
+        eprint("succeded updating record")
         return(True)
     elif cmd == 'show':
         name = opts.pop(0) if len(opts) > 0 else None
         try:
             rc = ipamcon.find_record(name, include_subs=include_subs)
         except Exception as e:
-            print("error searching record: {}".format(e))
+            eprint("error searching record: {}".format(e))
             return False
         print_records(rc)
         return(True)
     else:
-        print("unknown command {}".format(cmd))
+        eprint("unknown command {}".format(cmd))
         rc = False
     return(rc)
 
 def do_address(cmd, opts):
     if cmd == 'show':
         if len(opts) < 1:
-            print("error: not enough arguments")
-            print("show address <10.0.0.1>")
+            eprint("error: not enough arguments")
+            eprint("show address <10.0.0.1>")
             return False
         addr = opts.pop(0)
         try:
             rc = ipamcon.find_address(addr)
         except Exception as e:
-            print("error searching record: {}".format(e))
+            eprint("error searching record: {}".format(e))
             return False
         print_records(rc)
         return True
     else:
-        print("unknown command {}".format(cmd))
+        eprint("unknown command {}".format(cmd))
     return True
 
 def do_network(cmd, opts):
     if cmd == 'show':
         if len(opts) < 1:
-            print("error: not enough arguments")
-            print("show network <10.0.0.0/24>")
+            eprint("error: not enough arguments")
+            eprint("show network <10.0.0.0/24>")
             return False
         net = opts.pop(0)
         try:
             rc = ipamcon.find_network(net)
         except Exception as e:
-            print("error searching record: {}".format(e))
+            eprint("error searching record: {}".format(e))
             return False
         print_records(rc)
         return True
     else:
-        print("unknown command {}".format(cmd))
+        eprint("unknown command {}".format(cmd))
     return True
 
 def _backup_cmp(a, b):
@@ -340,7 +340,7 @@ def do_maintenance(cmd, opts):
             if stdout_fh != None:
                 sys.stdout.close()
                 sys.stdout = stdout_fh
-            print("error backing up database: {}".format(e))
+            eprint("error backing up database: {}".format(e))
             return False
         print_domains(rc)
         try:
@@ -349,7 +349,7 @@ def do_maintenance(cmd, opts):
             if stdout_fh != None:
                 sys.stdout.close()
                 sys.stdout = stdout_fh
-            print("error backing up database: {}".format(e))
+            eprint("error backing up database: {}".format(e))
             return False
         #NOTE: need to sort the records so that A and AAAA records are first
         rc.sort(key=cmp_to_key(_backup_cmp))
@@ -367,7 +367,7 @@ def do_maintenance(cmd, opts):
             try:
                 f = open(opts[0], 'r')
             except Exception as e:
-                print("error opening file {}: {}".format(opts[0],e))
+                eprint("error opening file {}: {}".format(opts[0],e))
                 return False
             commands = f.readlines()
             f.close()
@@ -381,10 +381,13 @@ def do_maintenance(cmd, opts):
                 v = opts.split(" ")
                 do_record("add", v)
             else:
-                print("error unknwon resource {}".format(res))
+                eprint("error unknwon resource {}".format(res))
     else:
-        print("unknown command {}".format(cmd))
+        eprint("unknown command {}".format(cmd))
     return True
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 def usage():
     print("""ipamctl [-fh] [-c config.ini] <action> <resource> [resource specific values / options]
@@ -438,7 +441,7 @@ def main():
                 if sys.argv != []:
                     ini_files.append(sys.argv[0])
                 else:
-                    print("required argument missing for -c")
+                    eprint("required argument missing for -c")
                     sys.exit(1)
             sys.argv.pop(0)
         else:
@@ -454,39 +457,39 @@ def main():
     val = config.read(ini_files)
 
     if val == []:
-        print("no configuration found. aborting")
+        eprint("no configuration found. aborting")
         sys.exit(2)
 
     dbtype = config.get('database','type')
     if dbtype not in ['sqlite3', 'http']:
-        print("no database type specified")
+        eprint("no database type specified")
         sys.exit(1)
 
     if action == None or action not in action_list:
-        print("unknown action {}".format(action))
+        eprint("unknown action {}".format(action))
         usage()
         sys.exit(1)
 
     if resource not in resource_list:
         usage()
-        print("unknown resource {}".format(resource))
+        eprint("unknown resource {}".format(resource))
         sys.exit(1)
 
     if dbtype == "sqlite3":
         if config.get('database','path') == None:
-            print("no database file specified")
+            eprint("no database file specified")
             sys.exit(1)
         ipamcon = ipam(database=dbtype, dbfile=config.get('database','path'))
     elif dbtype == "http":
-        print("connecting via http")
+        eprint("connecting via http")
         if config.get('database', 'server') == None:
-            print("no database server specified")
+            eprint("no database server specified")
             sys.exit(1)
         if config.get('database', 'port') == None:
-            print("no database port specified")
+            eprint("no database port specified")
             sys.exit(1)
         if config.get('database', 'apikey') == None:
-            print("no database apikey specified")
+            eprint("no database apikey specified")
             sys.exit(1)
         ipamcon = ipam(database=dbtype, server=config.get('database','server'), port=config.get('database','port'), key=config.get('database','apikey'))
 
