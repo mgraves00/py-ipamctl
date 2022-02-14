@@ -4,7 +4,7 @@ Command line utility for operating a small IP Address Management IPAM database. 
 
 See ipamctl.md for how to use.
 
-Install
+# Install
 
 - Clone repository
 - copy ipamctl to /usr/local/bin (or whatever directory you want)
