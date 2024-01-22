@@ -142,8 +142,9 @@ def do_domain(cmd, opts):
             eprint("del domain <name>")
             return False
         name = opts.pop(0)
+        options = unpack_options(opts)
         try:
-            rc = ipamcon.delete_domain(name, force=force)
+            rc = ipamcon.delete_domain(name, force=force, options=options)
         except Exception as e:
             print("error deleting domain: {}".format(e))
             return False
@@ -225,15 +226,11 @@ def do_record(cmd, opts):
             return False
         name = opts.pop(0)
         options = unpack_options(opts)
-        rid=None
         if 'id' not in options:
             eprint("error: must specifiy an ID")
             return False
-        else:
-            rid = options['id']
-            del options['id']
         try:
-            rc = ipamcon.delete_record(name, id=rid, force=force)
+            rc = ipamcon.delete_record(name, force=force, options=options)
         except Exception as e:
             eprint("error deleting record: {}".format(e))
             return False
@@ -248,13 +245,9 @@ def do_record(cmd, opts):
         rr_type = opts.pop(0).upper()
         value = opts.pop(0)
         options = unpack_options(opts)
-        rid=None
         if 'id' not in options:
             eprint("error: must specifiy an ID")
             return False
-        else:
-            rid = options['id']
-            del options['id']
         try:
             if not ipamcon.check_options(rr_type, options):
                 eprint("error: not enough arguments")
@@ -264,7 +257,7 @@ def do_record(cmd, opts):
             eprint(f'error: unknown record type {e}')
             return False
         try:
-            rc = ipamcon.update_record(name, rr_type, value, id=rid, options=options)
+            rc = ipamcon.update_record(name, rr_type, value, options=options)
         except Exception as e:
             eprint("error updating record: {}".format(e))
             return False
@@ -412,6 +405,7 @@ def usage():
         database    (only used for backup/restore)
         bind        Bind formatted zone file (only for export)
         nsd         NSD formatted zone file (only for export)
+        unbound     Unbound formatted zone file (only for export)
 
     """)
 
