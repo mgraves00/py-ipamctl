@@ -32,7 +32,7 @@
 #     OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 #     SUCH DAMAGE.
 
-# Zone format: nsd, unbound
+# Zone format: nsd, unbound, bind
 ZFMT="unbound"
 IPAMCTL="/usr/local/bin/ipamctl"
 UNB_CHK="/usr/sbin/unbound-checkconf"
