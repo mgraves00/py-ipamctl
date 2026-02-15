@@ -1,0 +1,5 @@
+bin/ipamctl
+share/examples/ipam/
+share/examples/ipam/ipam.ini.md
+share/examples/ipam/ipamctl.md
+share/examples/ipam/update_zone.sh
