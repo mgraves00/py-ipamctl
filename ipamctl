@@ -41,7 +41,7 @@ import configparser
 ipamcon = None
 force = False
 include_subs = False
-IPAMCTL_VERSION=1.0.4
+IPAMCTL_VERSION="1.0.5"
 
 RR_OPTS = ipam.RR_OPTS
 RR_FMT = {

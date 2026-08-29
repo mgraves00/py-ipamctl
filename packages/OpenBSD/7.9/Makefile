@@ -1,7 +1,7 @@
 #
 COMMENT =		cli utility for manipulating simple IPAM database
 
-V =1.0.4
+V =1.0.5
 MODPY_EGG_VERSION =	${V}
 #REVISION =		1
 DISTNAME =		py-ipamctl-${V}
