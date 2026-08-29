@@ -19,10 +19,10 @@ all:
 	@echo "  release"
 
 release: update_version make_package update_distfile
-	git tag -f v${VER}
+	git tag v${VER}
 
 push_release: release
-	git push origin -f --tags
+	git push origin --tags
 	@echo "version updated to ${VER}"
 	@echo "updates pushed to origin."
 	@echo "ready to create release"
