@@ -1,5 +1,5 @@
 #
-VER=1.0.4
+VER=1.0.5
 BASENAME=py-ipamctl
 RELNAME=${BASENAME}-${VER}
 RELPATH=release
@@ -20,13 +20,15 @@ all:
 
 release: update_version make_package update_distfile
 	git tag -f v${VER}
+
+push_release: release
 	git push origin -f --tags
 	@echo "version updated to ${VER}"
 	@echo "updates pushed to origin."
 	@echo "ready to create release"
 
 update_version:
-	sed -i 's/\(IPAMCTL_VERSION *= *\).*/\1${VER}/' ipamctl
+	sed -i 's/\(IPAMCTL_VERSION *= *\).*/\1"${VER}"/' ipamctl
 	sed -i 's/\(V = *\).*/\1${VER}/' ${obsd_pkg_dir}/Makefile
 	-git commit -m "touch version" ${obsd_pkg_dir}/Makefile ipamctl
 
