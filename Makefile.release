@@ -11,7 +11,8 @@ FILES= LICENSE \
 		README.md \
 		ipamctl \
 		ipamctl.md \
-		ipam.ini.md
+		ipam.ini.md \
+		contrib/update_zone.sh
 
 all:
 	@echo "targets:"
@@ -30,7 +31,7 @@ update_version:
 	-git commit -m "touch version" ${obsd_pkg_dir}/Makefile ipamctl
 
 make_package:
-	mkdir -p ${.CURDIR}/${RELPATH}/${RELNAME}/src/libipam
+	mkdir -p ${.CURDIR}/${RELPATH}/${RELNAME}/contrib
 	for f in ${FILES}; do cp $$f ${.CURDIR}/${RELPATH}/${RELNAME}/$$f; done
 	tar -C ${.CURDIR}/${RELPATH}/ -czf ${.CURDIR}/${RELPATH}/${RELNAME}.tar.gz ${RELNAME}/
 
