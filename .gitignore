@@ -1,0 +1,6 @@
+# ignore test ini files
+*.ini
+# regress
+regress/*
+# libipam link
+libipam
