@@ -41,7 +41,7 @@ import configparser
 ipamcon = None
 force = False
 include_subs = False
-IPAMCTL_VERSION="1.0.3"
+IPAMCTL_VERSION="1.0.4"
 
 RR_OPTS = ipam.RR_OPTS
 RR_FMT = {
@@ -303,7 +303,7 @@ def do_address(cmd, opts):
         print_records(rc)
         return True
     else:
-        eprint("unknown command {}".format(cmd))
+        eprint("comman {} not supported with address".format(cmd))
     return True
 
 def do_network(cmd, opts):
@@ -320,8 +320,22 @@ def do_network(cmd, opts):
             return False
         print_records(rc)
         return True
+    elif cmd == 'export':
+        if len(opts) < 2:
+            eprint("error: missing network/bitmask ")
+            return False
+        network = opts.pop(0)
+        exp_type = opts.pop(0)
+        out = ""
+        try:
+            out = ipamcon.export(type=exp_type,network=network)
+        except Exception as e:
+            eprint(f'error: export error {e}')
+            return(False)
+        print(out)
+        return(True)
     else:
-        eprint("unknown command {}".format(cmd))
+        eprint("comman {} not supported with network".format(cmd))
     return True
 
 def _backup_cmp(a, b):
@@ -393,6 +407,15 @@ def do_maintenance(cmd, opts):
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
+def config_get(config=None, section=None, item=None, default=None):
+    if config == None or section == None or item == None:
+        return None
+    try:
+        val = config.get(section,item)
+    except:
+        val = default
+    return val
+
 def usage():
     print("""ipamctl [-fh] [-c config.ini] <action> <resource> [resource specific values / options]
     -c      alternate ini file
@@ -447,7 +470,7 @@ def main():
             elif sys.argv[0] == "-c":
                 sys.argv.pop(0)
                 if sys.argv != []:
-                    ini_files.append(sys.argv[0])
+                    ini_files = [ sys.argv[0] ]
                 else:
                     eprint("required argument missing for -c")
                     sys.exit(1)
@@ -461,16 +484,16 @@ def main():
         resource = sys.argv.pop(0)
     options = sys.argv
 
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(allow_no_value=True)
     val = config.read(ini_files)
 
     if val == []:
         eprint("no configuration found. aborting")
         sys.exit(2)
 
-    dbtype = config.get('database','type')
+    dbtype = config_get(config, 'database','type')
     if dbtype not in ['sqlite3', 'http']:
-        eprint("no database type specified")
+        eprint("no database type specified: {}".format(dbtype))
         sys.exit(1)
 
     if action == None or action not in action_list:
@@ -484,22 +507,22 @@ def main():
         sys.exit(1)
 
     if dbtype == "sqlite3":
-        if config.get('database','path') == None:
+        if config_get(config, 'database','path') == None:
             eprint("no database file specified")
             sys.exit(1)
-        ipamcon = ipam(database=dbtype, dbfile=config.get('database','path'))
+        ipamcon = ipam(database=dbtype, dbfile=config_get(config, 'database','path'))
     elif dbtype == "http":
         eprint("connecting via http")
-        if config.get('database', 'server') == None:
+        if config_get(config, 'database', 'server') == None:
             eprint("no database server specified")
             sys.exit(1)
-        if config.get('database', 'port') == None:
+        if config_get(config, 'database', 'port') == None:
             eprint("no database port specified")
             sys.exit(1)
-        if config.get('database', 'apikey') == None:
+        if config_get(config, 'database', 'apikey') == None:
             eprint("no database apikey specified")
             sys.exit(1)
-        ipamcon = ipam(database=dbtype, server=config.get('database','server'), port=config.get('database','port'), key=config.get('database','apikey'))
+        ipamcon = ipam(database=dbtype, server=config_get(config, 'database','server'), port=config_get(config, 'database','port'), key=config_get(config, 'database','apikey'))
 
     if resource in ['domain', 'domains' ]:
         rc = do_domain(action, options)
