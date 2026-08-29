@@ -9,7 +9,6 @@ _size_fragment = perl -e '$$s = (stat $$ARGV[0])[7]; print "SIZE ($$ARGV[1]) = $
 
 FILES= LICENSE \
 		README.md \
-		requirements.txt \
 		ipamctl \
 		ipamctl.md \
 		ipam.ini.md
@@ -26,7 +25,7 @@ release: update_version make_package update_distfile
 	@echo "ready to create release"
 
 update_version:
-	sed -i 's/\(IPAMCTL_VERSION *= *\).*/\1${VER}/' ipamd
+	sed -i 's/\(IPAMCTL_VERSION *= *\).*/\1${VER}/' ipamctl
 	sed -i 's/\(V = *\).*/\1${VER}/' ${obsd_pkg_dir}/Makefile
 	-git commit -m "touch version" ${obsd_pkg_dir}/Makefile ipamctl
 
