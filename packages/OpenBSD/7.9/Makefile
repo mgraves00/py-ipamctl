@@ -39,5 +39,6 @@ do-install:
 	${INSTALL_DATA} ${WRKSRC}/ipam.ini.md ${PREFIX}/share/examples/ipam
 	${INSTALL_DATA} ${WRKSRC}/ipamctl.md ${PREFIX}/share/examples/ipam
 	${INSTALL_DATA} ${WRKSRC}/contrib/update_zone.sh ${PREFIX}/share/examples/ipam
+	${INSTALL_DATA} ${WRKSRC}/contrib/ipaddress.lib.sh ${PREFIX}/share/examples/ipam
 
 .include <bsd.port.mk>
