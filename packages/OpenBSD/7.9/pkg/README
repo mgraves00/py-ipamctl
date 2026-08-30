@@ -1,0 +1,12 @@
++-------------------------------------------------------------------------------
+| Running ${PKGSTEM} on OpenBSD
++-------------------------------------------------------------------------------
+
+There are a couple of helper scripts.
+
+update_zone.sh - that will use ipamctl(8) to export the requested domain and
+create a zonefile in the specific supported format.
+
+ipaddress.lib.sh - helper library for update_zone.sh script.  Install in 
+/usr/local/share/misc or update the path in update_zone.sh to its location.
+
