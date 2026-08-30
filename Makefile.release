@@ -12,7 +12,8 @@ FILES= LICENSE \
 		ipamctl \
 		ipamctl.md \
 		ipam.ini.md \
-		contrib/update_zone.sh
+		contrib/update_zone.sh \
+		contrib/ipaddress.lib.sh
 
 all:
 	@echo "targets:"
