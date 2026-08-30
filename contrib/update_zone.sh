@@ -32,6 +32,9 @@
 #     OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 #     SUCH DAMAGE.
 
+# import IP address helper function
+. /usr/local/share/misc/ipaddress.lib.sh
+
 # Zone format: nsd, unbound, bind
 ZFMT="unbound"
 IPAMCTL="/usr/local/bin/ipamctl"
@@ -55,11 +58,24 @@ fi
 
 TS=$(date +"$DFMT")
 
-$IPAMCTL export domain $dom ${ZFMT} > ${zfil}.new
+method="domain"
+if echo "${dom}" | grep -q -i "/"; then
+	method="network"
+fi
+
+$IPAMCTL export ${method} $dom ${ZFMT} > ${zfil}.new
 if [ $? -ne 0 ]; then
 	rm -f ${zfil}.new
 	echo "Error exporting zone to file"
 	exit 1
+fi
+
+if [ "${method}" == "network" ]; then
+	if isv4 "${dom}"; then
+		dom=$(v4inaddr "${dom}")
+	else
+		dom=$(v6inaddr "${dom}")
+	fi
 fi
 
 if [ ! -s ${zfil}.new ]; then
