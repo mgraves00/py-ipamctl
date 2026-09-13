@@ -131,8 +131,8 @@ def print_records(recs):
 
 def do_domain(cmd, opts):
     if cmd == 'add':
-        print('[DEBUG] adding domain')
-        print(f'[DEBUG] {opts}')
+        dprint('[DEBUG] adding domain')
+        dprint(f'[DEBUG] {opts}')
         if len(opts) == 0:
             eprint("error: missing domain name")
             return False
@@ -150,8 +150,8 @@ def do_domain(cmd, opts):
         eprint("succeded adding domain")
         return(True)
     elif cmd == 'del':
-        print('[DEBUG] delete domain')
-        print(f'[DEBUG] {opts}')
+        dprint('[DEBUG] delete domain')
+        dprint(f'[DEBUG] {opts}')
         if len(opts) == 0:
             eprint("error: missing domain name")
             eprint("del domain <name>")
@@ -166,8 +166,8 @@ def do_domain(cmd, opts):
         eprint("succeded deleting domain")
         return(True)
     elif cmd == 'upd':
-        print('[DEBUG] update domain')
-        print(f'[DEBUG] {opts}')
+        dprint('[DEBUG] update domain')
+        dprint(f'[DEBUG] {opts}')
         if len(opts) == 0:
             eprint("error: missing domain name")
             return False
@@ -185,8 +185,8 @@ def do_domain(cmd, opts):
         eprint("succeded updating domain")
         return(True)
     elif cmd == 'show':
-        print('[DEBUG] show domain')
-        print(f'[DEBUG] {opts}')
+        dprint('[DEBUG] show domain')
+        dprint(f'[DEBUG] {opts}')
         name = opts.pop(0) if len(opts) > 0 else None
         try:
             rc = ipamcon.find_domain(name, include_subs=include_subs)
@@ -196,8 +196,8 @@ def do_domain(cmd, opts):
         print_domains(rc)
         return(True)
     elif cmd == 'export':
-        print('[DEBUG] export domain')
-        print(f'[DEBUG] {opts}')
+        dprint('[DEBUG] export domain')
+        dprint(f'[DEBUG] {opts}')
         if len(opts) < 2:
             eprint("error: missing domain name")
             return False
@@ -218,17 +218,17 @@ def do_domain(cmd, opts):
 
 def do_record(cmd, opts):
     if cmd == 'add':
-        print('[DEBUG] adding record')
-        print(f'[DEBUG] {opts}')
+        dprint('[DEBUG] adding record')
+        dprint(f'[DEBUG] {opts}')
         if len(opts) < 3:
             eprint("error: missing name, type or value")
             return False
         name = opts.pop(0)
         rr_type = opts.pop(0).upper()
         value = opts.pop(0)
-        print(f'[DEBUG] {opts}')
+        dprint(f'[DEBUG] {opts}')
         options = unpack_options(opts)
-        print(f'[DEBUG] {name} {rr_type} {value} {options}')
+        dprint(f'[DEBUG] {name} {rr_type} {value} {options}')
         try:
             if not ipamcon.check_options(rr_type, options):
                 print("error: not enough arguments")
@@ -245,16 +245,16 @@ def do_record(cmd, opts):
         eprint("succeded adding record")
         return(True)
     elif cmd == 'del':
-        print('[DEBUG] delete record')
+        dprint('[DEBUG] delete record')
         if len(opts) < 2:
             eprint("error: not enough arguments")
             eprint("del record <name> id:##")
             return False
         name = opts.pop(0)
-        rrtype = opts.pop(0).upper()
+        rr_type = opts.pop(0).upper()
         value = opts.pop(0)
         options = unpack_options(opts)
-        print(f'[DEBUG] {name} {rr_type} {value} {options}')
+        dprint(f'[DEBUG] {name} {rr_type} {value} {options}')
         if 'id' not in options:
             eprint("error: must specifiy an ID")
             return False
@@ -266,7 +266,7 @@ def do_record(cmd, opts):
         eprint("succeded deleting record")
         return(True)
     elif cmd == 'upd':
-        print('[DEBUG] update record')
+        dprint('[DEBUG] update record')
         if len(opts) < 2:
             eprint("error: missing name, type, value, id")
             eprint("upd record <name> <value> {}".format(options_str(RR_OPTS[rr_type])))
@@ -275,7 +275,7 @@ def do_record(cmd, opts):
         rr_type = opts.pop(0).upper()
         value = opts.pop(0)
         options = unpack_options(opts)
-        print(f'[DEBUG] {name} {rr_type} {value} {options}')
+        dprint(f'[DEBUG] {name} {rr_type} {value} {options}')
         if 'id' not in options:
             eprint("error: must specifiy an ID")
             return False
@@ -295,9 +295,9 @@ def do_record(cmd, opts):
         eprint("succeded updating record")
         return(True)
     elif cmd == 'show':
-        print('[DEBUG] show record')
+        dprint('[DEBUG] show record')
         name = opts.pop(0) if len(opts) > 0 else None
-        print(f'[DEBUG] {name}')
+        dprint(f'[DEBUG] {name}')
         try:
             rc = ipamcon.find_record(name, include_subs=include_subs)
         except Exception as e:
@@ -429,6 +429,10 @@ def do_maintenance(cmd, opts):
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
+def dprint(*args, **kwargs):
+    if DEBUG == True:
+        eprint(*args, **kwargs)
+
 def config_get(config=None, section=None, item=None, default=None):
     if config == None or section == None or item == None:
         return None
@@ -515,10 +519,6 @@ def main():
         eprint("no configuration found. aborting")
         sys.exit(2)
 
-    dbtype = config_get(config, 'database','type')
-    if dbtype not in ['sqlite3', 'http']:
-        eprint("no database type specified: {}".format(dbtype))
-        sys.exit(1)
 
     if action == None or action not in action_list:
         eprint("unknown action {}".format(action))
@@ -530,24 +530,21 @@ def main():
         eprint("unknown resource {}".format(resource))
         sys.exit(1)
 
-    if dbtype == "sqlite3":
-        if config_get(config, 'database','path') == None:
-            eprint("no database file specified")
-            sys.exit(1)
-        ipamcon = ipam(database=dbtype, dbfile=config_get(config, 'database','path'))
-    elif dbtype == "http":
-        eprint("connecting via http")
-        if config_get(config, 'database', 'server') == None:
-            eprint("no database server specified")
-            sys.exit(1)
-        if config_get(config, 'database', 'port') == None:
-            eprint("no database port specified")
-            sys.exit(1)
-        if config_get(config, 'database', 'apikey') == None:
-            eprint("no database apikey specified")
-            sys.exit(1)
-        ipamcon = ipam(database=dbtype, server=config_get(config, 'database','server'), port=config_get(config, 'database','port'), key=config_get(config, 'database','apikey'))
+    # force ipamctl to use API to connect to ipamd
+    dbtype = "http"
+    eprint("connecting via http")
+    if config_get(config, 'database', 'server') == None:
+        eprint("no database server specified")
+        sys.exit(1)
+    if config_get(config, 'database', 'port') == None:
+        eprint("no database port specified")
+        sys.exit(1)
+    if config_get(config, 'database', 'apikey') == None:
+        eprint("no database apikey specified")
+        sys.exit(1)
+    ipamcon = ipam(database=dbtype, server=config_get(config, 'database','server'), port=config_get(config, 'database','port'), key=config_get(config, 'database','apikey'))
 
+    # do the work
     if resource in ['domain', 'domains' ]:
         rc = do_domain(action, options)
     elif resource in ['record', 'records' ]:
