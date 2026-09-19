@@ -161,7 +161,7 @@ def do_domain(cmd, opts):
         try:
             rc = ipamcon.delete_domain(name, force=force, options=options)
         except Exception as e:
-            print("error deleting domain: {}".format(e))
+            eprint("error deleting domain: {}".format(e))
             return False
         eprint("succeded deleting domain")
         return(True)
@@ -191,7 +191,7 @@ def do_domain(cmd, opts):
         try:
             rc = ipamcon.find_domain(name, include_subs=include_subs)
         except Exception as e:
-            print("error searching domain {}".format(e))
+            eprint("error searching domain {}".format(e))
             return False
         print_domains(rc)
         return(True)
@@ -231,8 +231,8 @@ def do_record(cmd, opts):
         dprint(f'[DEBUG] {name} {rr_type} {value} {options}')
         try:
             if not ipamcon.check_options(rr_type, options):
-                print("error: not enough arguments")
-                print("add record <name> {}".format(options_str(RR_OPTS[rr_type])))
+                eprint("error: not enough arguments")
+                eprint("add record <name> {}".format(options_str(RR_OPTS[rr_type])))
                 return False
         except Exception as e:
             eprint(f'error: unknown record type {e}')
@@ -532,7 +532,7 @@ def main():
 
     # force ipamctl to use API to connect to ipamd
     dbtype = "http"
-    eprint("connecting via http")
+    dprint("connecting via http")
     if config_get(config, 'database', 'server') == None:
         eprint("no database server specified")
         sys.exit(1)
