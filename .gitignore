@@ -6,3 +6,5 @@ regress/*
 libipam
 TODO
 release/
+*.patch
+*.orig
