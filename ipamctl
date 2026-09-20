@@ -442,6 +442,26 @@ def config_get(config=None, section=None, item=None, default=None):
         val = default
     return val
 
+# function will only return on success
+def check_version(ipam):
+    try:
+        val = ipam.version()
+    except Exception as e:
+        # fail on error
+        eprint(f'{e['status']} {e['msg']}')
+        sys.exit(1)
+    if 'libipam' not in val:
+        eprint(f'cannot determin libipam version')
+        sys.exit(1)
+    server_version = val['libipam'].split('.')
+    client_version = ipam.VERSION.split('.')
+    if int(server_version[0]) != int(client_version[0]):
+        eprint(f'client and server version do not match')
+        sys.exit(1)
+    if int(server_version[1]) < int(client_version[1]):
+        eprint(f'client version too new')
+        sys.exit(1)
+
 def usage():
     print("""ipamctl [-fh] [-c config.ini] <action> <resource> [resource specific values / options]
     -c      alternate ini file
@@ -543,6 +563,9 @@ def main():
         eprint("no database apikey specified")
         sys.exit(1)
     ipamcon = ipam(database=dbtype, server=config_get(config, 'database','server'), port=config_get(config, 'database','port'), key=config_get(config, 'database','apikey'))
+
+    # check versions align. exist on any failure
+    check_version(ipamcon)
 
     # do the work
     if resource in ['domain', 'domains' ]:
