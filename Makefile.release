@@ -1,10 +1,11 @@
 #
-VER=1.0.6
+VER=1.0.7
 BASENAME=py-ipamctl
 RELNAME=${BASENAME}-${VER}
 RELPATH=release
 
-obsd_pkg_dir=packages/OpenBSD/7.9
+obsd_pkg_dir=packages/OpenBSD
+obsd_versions!=ls ${obsd_pkg_dir}/
 _size_fragment = perl -e '$$s = (stat $$ARGV[0])[7]; print "SIZE ($$ARGV[1]) = $$s\n";'
 
 FILES= LICENSE \
@@ -16,13 +17,18 @@ FILES= LICENSE \
 		contrib/ipaddress.lib.sh
 
 all:
-	@echo "targets:"
-	@echo "  release"
+	@echo "targets: (when in doubt got in reverse order)"
+	@echo "  push_release - push release to git"
+	@echo "  release  - update versions. make package. update distfile. create a release. tag tree"
+	@echo "  update_distfile - update distfile hash and size of the package"
+	@echo "  make_package - create a new package"
+	@echo "  update_version - update version numbers in files"
 
 release: update_version make_package update_distfile
 	git tag v${VER}
 
-push_release: release
+push_release:
+	git push origin
 	git push origin --tags
 	@echo "version updated to ${VER}"
 	@echo "updates pushed to origin."
@@ -30,20 +36,24 @@ push_release: release
 
 update_version:
 	sed -i 's/\(IPAMCTL_VERSION *= *\).*/\1"${VER}"/' ipamctl
-	sed -i 's/\(V = *\).*/\1${VER}/' ${obsd_pkg_dir}/Makefile
-	-git commit -m "touch version" ${obsd_pkg_dir}/Makefile ipamctl
+	for f in ${obsd_versions}; do sed -i 's/\(V = *\).*/\1${VER}/' ${obsd_pkg_dir}/$$f/Makefile; done
+	-git commit -m "update version" ${obsd_pkg_dir}/*/Makefile ipamctl
 
 make_package:
-	mkdir -p ${.CURDIR}/${RELPATH}/${RELNAME}/contrib
-	for f in ${FILES}; do cp $$f ${.CURDIR}/${RELPATH}/${RELNAME}/$$f; done
-	tar -C ${.CURDIR}/${RELPATH}/ -czf ${.CURDIR}/${RELPATH}/${RELNAME}.tar.gz ${RELNAME}/
+	[ -f ${.CURDIR}/${RELPATH}/${RELNAME}.tar.gz ] || (\
+	[ -d "${.CURDIR}/${RELPATH}/${RELNAME}" ] || mkdir -p ${.CURDIR}/${RELPATH}/${RELNAME}; \
+	[ -d "${.CURDIR}/${RELPATH}/${RELNAME}/contrib" ] || mkdir -p ${.CURDIR}/${RELPATH}/${RELNAME}/contrib; \
+	for f in ${FILES}; do cp $$f ${.CURDIR}/${RELPATH}/${RELNAME}/$$f; done; \
+	tar -C ${.CURDIR}/${RELPATH}/ -czf ${.CURDIR}/${RELPATH}/${RELNAME}.tar.gz ${RELNAME}/ )
 
 update_distfile:
-	ck="${.CURDIR}/${obsd_pkg_dir}/DISTFILE.new"; \
-	trap "rm -f $$ck; exit 1" 1 2 3 13 15; \
-	cd ${.CURDIR}/${RELPATH}; \
-	cksum -b -a SHA256 -- ${RELNAME}.tar.gz >> $$ck; \
-	${_size_fragment} ${RELNAME}.tar.gz ${RELNAME}.tar.gz >> $$ck; \
-	mv -f $$ck ${.CURDIR}/${obsd_pkg_dir}/distinfo
-	-git commit -m "update checksum" ${.CURDIR}/${obsd_pkg_dir}/distinfo
+	for f in ${obsd_versions}; do \
+		ck="${.CURDIR}/${obsd_pkg_dir}/$$f/DISTFILE.new"; \
+		trap "rm -f $$ck; exit 1" 1 2 3 13 15; \
+		cd ${.CURDIR}/${RELPATH}; \
+		cksum -b -a SHA256 -- ${RELNAME}.tar.gz >> $$ck; \
+		${_size_fragment} ${RELNAME}.tar.gz ${RELNAME}.tar.gz >> $$ck; \
+		mv -f $$ck ${.CURDIR}/${obsd_pkg_dir}/$$f/distinfo; \
+	done
+	-git commit -m "update distinfo" ${.CURDIR}/${obsd_pkg_dir}/*/distinfo
 
